@@ -1,0 +1,417 @@
+package com.graphicsDisplayer.model
+
+import com.graphicsDisplayer.primitive._
+import com.graphicsDisplayer.transformations.Transformations._
+import com.graphicsDisplayer.transformations.{Projection, View}
+import com.graphicsDisplayer.vectors.Types._
+import com.graphicsDisplayer.vectors._
+
+import scala.util.Random
+
+
+case class BasicModel(
+                       vertices: Seq[Vertex],
+                       uniformColorOption: Option[Vec4] = None,
+                       indicesOption: Option[Seq[Int]] = None,
+                       origin: Vec3 = Vec3(),
+                       drawMode: DrawMode = DrawLines,
+                       modelTransform: Mat4 = Mat4(),
+                       normalTransform: Mat4 = Mat4()
+                     ) extends Model {
+
+  override def transformedVertexArrays: Seq[VertexArray] = ???
+  private val originToZero = translation(-origin)
+  private val zeroToOrigin = translation(origin)
+
+  private val adjustOrigin: Mat4 => Mat4 =
+    if (origin == Vec3.zero)
+      M => M
+    else M => zeroToOrigin * M * originToZero
+
+//  def numVertices: Int = vertices.size
+//
+//  def numIndexedVertices: Int = indicesOption.map(_.size).getOrElse(numVertices)
+
+  override def withOrigin(newOrigin: Vec3): Model = copy(origin = newOrigin)
+
+  def withUniformColor(color: Vec4): BasicModel = copy(uniformColorOption = Some(color))
+
+  //temp incorrect transform of normals:
+  //todo: transform normals correctly
+  def getTransformedVertices: Seq[Vertex] =
+    uniformColorOption match {
+      case None =>
+        vertices.map(v =>
+          v.copy(
+            position = modelTransform * v.position,
+            normalOption = v.normalOption.map(normalTransform * _)
+          )
+        )
+
+      case someColor =>
+        vertices.map(v =>
+          v.copy(
+            position = modelTransform * v.position,
+            colorOption = someColor,
+            normalOption = v.normalOption.map(normalTransform * _)
+          )
+        )
+    }
+
+  //  def getTransformedVertices: Seq[Vertex] =
+  //    uniformColorOption match {
+  //      case None => vertices.map (v => v.copy (position = modelTransform * v.position) )
+  //      case someColor => vertices.map (v => v.copy (position = modelTransform * v.position, color = someColor) )
+  //    }
+
+  //def getTransformedOrigin: Vec4 = modelTransform * Vec4(origin)
+
+  //  def transform(M: Mat4, frame: Frame): BasicModel = {
+  //
+  //    copy(modelTransform = frame match {
+  //      case ObjectFrame => modelTransform * adjustOrigin(M)
+  //      case WorldFrame => M * modelTransform
+  //      case GeneralFrame(f) => throw new Exception("Transforming in general frame is not supported currently")
+  //    })
+  //  }
+
+
+  def transform(modelM: Mat4, normalM: Mat4, frame: Frame): BasicModel = {
+    frame match {
+      case ObjectFrame =>
+        copy(
+          modelTransform = modelTransform * adjustOrigin(modelM),
+          normalTransform = normalTransform * adjustOrigin(normalM)
+        )
+
+      case WorldFrame =>
+        copy(
+          modelTransform = modelM * modelTransform,
+          normalTransform = normalM * normalTransform
+        )
+
+      case GeneralFrame(f) => throw new Exception("Transforming in general frame is not supported currently")
+    }
+  }
+
+  def fixed(): BasicModel = copy(
+    vertices = vertices.map(v => v.copy(position = modelTransform * v.position, normalOption = v.normalOption.map(normalTransform * _))),
+    origin = (modelTransform * Vec4(origin)).toVec3,
+    modelTransform = Mat4(),
+    normalTransform = Mat4())
+
+  //  def fixed(): BasicModel = copy(
+  //    vertices = vertices.map(modelTransform * _),
+  //    origin = (modelTransform * Vec4(origin)).toVec3,
+  //    modelTransform = Mat4())
+
+  private val red = Vec4(1, 0, 0, 1)
+
+  private def makeNormalsVertices(vertices: Seq[Vertex]): Seq[Vertex] = {
+    vertices.flatMap(v => {
+      v.normalOption match {
+        case None => Seq()
+        case Some(n) => {
+          //operation in Vec3 in order to leave w as 1:
+          val unitNormal = n.toVec3.normalized
+          val normalEndPosition = (v.position.toVec3 + unitNormal*0.2).toVec4
+
+          val normalStart = Vertex(
+            position = v.position,
+            colorOption = Some(red), normalOption = None)
+
+          val normalEnd = Vertex(
+            position = normalEndPosition,
+            colorOption = Some(red), normalOption = None)
+
+          Seq(normalStart, normalEnd)
+        }
+      }
+    })
+  }
+
+  def getProjectedPrimitives(projection: Projection, view: View, showNormals: Boolean): Seq[Primitive] = {
+    val transformedVertices = getTransformedVertices
+
+
+    def projectViewVertices(vs: Seq[Vertex]) = {
+      vs.map(view.view)
+        .map(projection.project)
+        .map(v => v.copy(v.position / v.position.w, normalOption = v.normalOption.map(n => n / n.w)))
+    }
+
+    val projectedVertices = projectViewVertices(transformedVertices)
+
+    val allVertices = indicesOption match {
+      case Some(indices) => indices.map(projectedVertices(_))
+      case None => projectedVertices
+    }
+
+    val modelPrimitives = PrimitiveMaker.makePrimitives(allVertices, drawMode)
+
+    if (!showNormals) {
+      modelPrimitives
+    }
+    else {
+      val normalVertices = makeNormalsVertices(transformedVertices)
+      val projectedNormalVertices = projectViewVertices(normalVertices)
+
+      modelPrimitives ++
+        PrimitiveMaker.makePrimitives(projectedNormalVertices, DrawLines)
+    }
+  }
+
+  //TODO: do I want Model to project itself?
+  //  def projectView(projection: Projection, view: View): Seq[Vertex] = {
+  //    val projectViewVertices =
+  //      getTransformedVertices
+  //        .map(view.view)
+  //        .map(projection.project)
+  //        .map(v => v.copy(v.position/v.position.w, normal = v.normal.map(n => n/n.w)))
+  //
+  //    indicesOption match {
+  //      case Some(indices) => indices.map(projectViewVertices(_))
+  //      case None => projectViewVertices
+  //    }
+  //  }
+
+
+}
+
+object BasicModel {
+
+  import Math._
+
+  implicit def vec4ToVertex(v: Vec4) = Vertex(v)
+
+  implicit def vec4SeqToVertexSeq(vseq: Seq[Vec4]) = vseq.map(Vertex(_))
+
+
+  def randomColor = Vec4(random, random, random)
+
+  val xAxis =
+    new BasicModel(
+      vertices = Seq(
+        Vec4(), Vec4(1),
+        Vec4(0.8, 0.05), Vec4(0.8, 0.0, 0.05),
+        Vec4(0.8, -0.05), Vec4(0.8, 0.0, -0.05),
+      ),
+      uniformColorOption = Some(Vec4(1, 0, 0, 1)),
+      indicesOption = Some(Seq(
+        0, 1,
+        1, 2, 1, 3, 1, 4, 1, 5,
+        2, 3, 3, 4, 4, 5, 5, 2
+      )),
+      drawMode = DrawLines
+      //,renderFunction = _.renderLines(_, Some(_.strokeWidth = 0.4))
+    )
+
+
+  val yAxis = xAxis.rotatez(-90).asInstanceOf[BasicModel].withUniformColor(Vec4(0, 0, 1, 1))
+  val zAxis = xAxis.rotatey(90).asInstanceOf[BasicModel].withUniformColor(Vec4(0, 1, 0, 1))
+
+  val simpleModel =
+    new BasicModel(
+      Seq(
+        Vec4(-1, 1),
+        Vec4(-1, 0.5),
+        Vec4(-0.5, 0.5),
+        Vec4(-0.5, 0),
+
+        Vec4(0, 0),
+        Vec4(0, -0.5),
+        Vec4(0.5, -0.5),
+        Vec4(0.5, -1),
+        Vec4(1, -1)
+      )
+    )
+
+
+  val box = {
+    val front = -0.5
+    val back = 0.5
+    val vertices = Seq(
+      Vertex(Vec4(-0.5, 0.5, front), colorOption = Some(randomColor)),
+      Vertex(Vec4(0.5, 0.5, front), colorOption = Some(randomColor)),
+      Vertex(Vec4(0.5, -0.5, front), colorOption = Some(randomColor)),
+      Vertex(Vec4(-0.5, -0.5, front), colorOption = Some(randomColor)),
+
+      Vertex(Vec4(-0.5, 0.5, back), colorOption = Some(randomColor)),
+      Vertex(Vec4(0.5, 0.5, back), colorOption = Some(randomColor)),
+      Vertex(Vec4(0.5, -0.5, back), colorOption = Some(randomColor)),
+      Vertex(Vec4(-0.5, -0.5, back), colorOption = Some(randomColor)))
+
+    //val origin = vertices.fold(Vec4(0, 0, 0, 0))(_ + _) / 8.0
+
+    val indices = Seq(
+      0, 1, 1, 2, 2, 3, 3, 0,
+      4, 5, 5, 6, 6, 7, 7, 4,
+      0, 4, 1, 5, 2, 6, 3, 7)
+
+    new BasicModel(vertices, indicesOption = Some(indices))
+  }
+
+  val prism = {
+    val front = -0.5
+    val back = 0.5
+    val vert = Math.sin(Math.toRadians(60))
+    val vertices = Seq(
+      Vec4(-0.5, 0.0, front),
+      Vec4(0.0, vert, front),
+      Vec4(0.5, 0.0, front),
+
+      Vec4(-0.5, 0.0, back),
+      Vec4(0.0, vert, back),
+      Vec4(0.5, 0.0, back))
+
+    //val origin = vertices.fold(Vec4(0, 0, 0, 0))(_ + _) / 6.0
+
+    val indices = Seq(
+      0, 1, 1, 2, 2, 0,
+      3, 4, 4, 5, 5, 3,
+      0, 3, 1, 4, 2, 5)
+
+    new BasicModel(vertices, indicesOption = Some(indices))
+  }
+
+  val circle = {
+    val pole = Vec4(0, 1, 0)
+    val n = 40
+    val deg = 360 / n
+    val vertices = (0 until n).map(i => rotationz(deg * i) * pole)
+
+    new BasicModel(vertices, drawMode = DrawLineLoop)
+  }
+
+  val ellipse = {
+    val origin = Vec4()
+    val vertices = Seq(origin, Vec4(1, 0, 0), Vec4(0, 1, 0))
+
+    new BasicModel(vertices, origin = origin.toVec3, drawMode = DrawEllipses)
+  }
+
+  val sphere = {
+    val origin = Vec4()
+    val pole = Vec4(0, 1, 0)
+
+    val numLatitudes = 20
+    val numLongtitudes = 20
+
+    val deg1 = 360 / numLatitudes
+    val deg2 = 360 / numLongtitudes
+
+    val vertices =
+      (
+        for (i <- 1 until numLatitudes) yield {
+          val p = rotationx(deg1 * i) * pole
+          p +: (0 to numLongtitudes).map(j => rotationy(deg2 * j) * p)
+        }
+        ).flatten
+
+    //val vertices = (0 until numLatitudes).map(i => rotationz(deg*i) * pole)
+
+    new BasicModel(vertices, origin = origin.toVec3, drawMode = DrawLineLoop)
+  }
+
+  val alpha = 0.2
+  val red = Vec4(1, 0, 0, alpha)
+  val green = Vec4(0, 1, 0, alpha)
+  val blue = Vec4(0, 0, 1, alpha)
+  val orange = Vec4(244.0 / 255.0, 152.0 / 255.0, 66.0 / 255.0, alpha)
+  val colors = Seq(red, green, blue, orange)
+
+  def randColor = colors(Random.nextInt(4))
+
+  object Tetrahedron {
+
+    private val p0 = Vec3(0, 0, 1)
+    private val p1 = Vec3(sqrt(8.0 / 9.0), 0, -1.0 / 3.0)
+    private val p2 = Vec3(-sqrt(2.0 / 9.0), sqrt(2.0 / 3.0), -1.0 / 3.0)
+    private val p3 = Vec3(-sqrt(2.0 / 9.0), -sqrt(2.0 / 3.0), -1.0 / 3.0)
+
+    //Seq(p0,p1,p2,p3).foreach(p => println(p.norm))
+
+    val tetrahedronVertices = Seq(p0, p1, p2, p0, p1, p3, p0, p2, p3, p1, p2, p3)
+
+
+    val tetrahedron =
+      BasicModel(
+        Seq(
+          Vertex(p0.toVec4, Some(red), Some(p0.toVec4)), //The vertices are also the normals
+          Vertex(p1.toVec4, Some(green), Some(p1.toVec4)),
+          Vertex(p2.toVec4, Some(blue), Some(p2.toVec4)),
+          Vertex(p3.toVec4, Some(orange), Some(p3.toVec4))
+        ),
+        indicesOption = Some(Seq(0, 1, 2, 3, 0, 1)),
+        drawMode = DrawTriangleStripe
+      )
+  }
+
+  def triSphere(numSteps: Int) = {
+
+    val center = Vec4()
+    //    val r = 1.0
+    //    val angle = toDegrees(asin(sqrt(1.0/3.0)))
+    //
+    //    val b = r*Math.sqrt(2.0/3.0)
+    //    val roty = rotationy(120)
+    //    val rotx = rotationx(-angle)
+    //
+    //    val ytip = b/2.0
+    //    val transy = translation(0,ytip,0)
+
+
+    //    val p0 = transy*center
+    //
+    //    val p_temp = rotx*Vec4(0,0,r)
+    //    val p1 = transy*p_temp
+    //    val p2 = transy*roty*p_temp
+    //    val p3 = transy*roty*roty*p_temp
+
+
+    //val r = 1
+
+    def processTriangle(v1: Vec3, v2: Vec3, v3: Vec3): Seq[Vec3] = {
+
+      val v12 = (v1 + v2)
+      //.normalized
+      val v13 = (v1 + v3)
+      //.normalized
+      val v23 = (v2 + v3) //.normalized
+
+      Seq(v1, v12, v13, v2, v12, v23, v3, v23, v13, v12, v13, v23).map(_.normalized)
+    }
+
+    def doSteps(triangles: Seq[Vec3], numSteps: Int): Seq[Vec3] = {
+
+      if (numSteps == 0) triangles
+      else {
+        doSteps(
+          triangles.grouped(3).flatMap(threePoints => processTriangle(threePoints(0), threePoints(1), threePoints(2))).toSeq,
+          numSteps - 1
+        )
+      }
+    }
+
+
+    val vertices =
+      doSteps(Tetrahedron.tetrahedronVertices, numSteps)
+        //  .map(_.normalized)
+        .map(p => Vertex(p.toVec4, Some(randColor)))
+
+    //vertices.foreach(v=>println(v.toVec3.norm))
+    new BasicModel(vertices, origin = center.toVec3, drawMode = DrawTriangles)
+  }
+
+
+  val randomSphere = {
+    def randMinusOneOne = 2 * random - 1
+
+    def randomVec = Vec3(randMinusOneOne, randMinusOneOne, randMinusOneOne)
+
+
+    val vertices = (1 to 500).map(_ => randomVec.normalized.toVec4)
+
+    new BasicModel(vertices, drawMode = DrawPoints)
+  }
+}
