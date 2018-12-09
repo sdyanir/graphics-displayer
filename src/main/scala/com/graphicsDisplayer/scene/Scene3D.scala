@@ -6,10 +6,16 @@ import com.graphicsDisplayer.primitive.{Primitive, PrimitiveMaker, Segment, Vert
 import com.graphicsDisplayer.transformations.{LookAt, Projection, View}
 import com.graphicsDisplayer.vectors.Vec4
 
+/**
+  * Scene3D represents a collection of models with projection and view transformations and light data. allows selecting
+  * an active model and manipulate it.
+  * @param projection
+  * @param view
+  * @param lightData
+  * @param models
+  * @param selectedModel
+  */
 case class Scene3D(projection: Projection, view: View, lightData: Option[LightData] = None, models: Seq[Model], selectedModel: Option[Int] = None) {
-
-  //def random = Math.random
-  //def randomColor = Vec4(random,random,random)
 
   //TODO: move projection out of Scene3D
   def projectVertexArray(va: VertexArray):VertexArray = {
@@ -26,7 +32,7 @@ case class Scene3D(projection: Projection, view: View, lightData: Option[LightDa
       .map(_.fixWorldPosition)//save the world position in dedicated field before transforming position
       .map(view.view)
       .map(projection.project)
-      .map(v => v.copy(v.position / v.position.w))//TODO: do I care about normals here?
+      .map(v => v.copy(v.position / v.position.w))//TODO: are normals important here?
 
     val projectedVerticesWithShadowData =
       if (shadowMap.isEmpty) projectedVertices
@@ -37,15 +43,6 @@ case class Scene3D(projection: Projection, view: View, lightData: Option[LightDa
       }
 
     va.copy(vertices = projectedVerticesWithShadowData)
-//    va.copy(
-//      vertices =
-//        va.vertices
-//          .map(_.fixWorldPosition)//save the world position in dedicated field before transforming position
-//          .map(view.view)
-//          .map(projection.project)
-//          .map(v => v.copy(v.position / v.position.w))//TODO: do I care about normals here?
-//          //.map(v => v.copy(v.position / v.position.w, normalOption = v.normalOption.map(n => n / n.w)))
-//    )
   }
 
 
@@ -132,37 +129,12 @@ case class Scene3D(projection: Projection, view: View, lightData: Option[LightDa
   }
 
   def selectModel(i: Int): Scene3D = {
+    // Create a new scene with the selected model
     copy(selectedModel = if (models.isDefinedAt(i)) Some(i) else None)
-    //selectedModel = if (models.isDefinedAt(i)) Some(i) else None
   }
 
   def addModel(model: Model): Scene3D = {
     copy(models = models :+ model)
   }
 
-
-
-  //  @deprecated
-  //  private def toPrimitives(basicModel: BasicModel, showNormals: Boolean): Seq[Primitive] = {
-  //    val vertexArray = basicModel.transformedVertexArrays.head
-  //    val projectedVertexArray = projectVertexArray(vertexArray)
-  //
-  //    if (!showNormals) projectedVertexArray.toPrimitives
-  //    else {
-  //      val projectedNormalsVertexArray = projectVertexArray(vertexArray.getNormals)
-  //      projectedVertexArray.toPrimitives ++ projectedNormalsVertexArray.toPrimitives
-  //    }
-  //  }
-  //
-  //  @deprecated
-  //  private def toPrimitives(model: Model): Seq[Primitive] = {
-  //    model match {
-  //      case basicModel: BasicModel => toPrimitives(basicModel, true)
-  //      case compositeModel: CompositeModel => compositeModel.originedModels.flatMap(toPrimitives)
-  //    }
-  //  }
-  //
-  //  @deprecated
-  //  def getProjectedPrimitives: Seq[Primitive] = models.flatMap(toPrimitives)
-  //
 }

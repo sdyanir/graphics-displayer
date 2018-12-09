@@ -1,17 +1,22 @@
 package com.graphicsDisplayer.rasterize
 
 import com.graphicsDisplayer.color.Colors
-import com.graphicsDisplayer.light.{Light, LightData}
+import com.graphicsDisplayer.light.LightData
 import com.graphicsDisplayer.primitive.{Primitive, Segment, Triangle, Vertex}
-import com.graphicsDisplayer.transformations.View
-import com.graphicsDisplayer.utils.Utils.linearTransform
 import com.graphicsDisplayer.vectors.Types.Vec4
-import com.graphicsDisplayer.vectors.Vec4
-
 import scalafx.scene.Node
 import scalafx.scene.paint.Color
 import scalafx.scene.shape.{Circle, Line, Polygon}
 
+/**
+  * Convert projected primitives to a sequence of scalafx shapes (Nodes) which can be drawn to screen (the scalafx canvas).
+  * This implementation of [[Rasterizer]] uses the basic shapes provided by scalafx.
+  *
+  * - A [[Vertex]] is converted to a scalafx Circle with radius of 1 pixel
+  * - A [[Segment]] is converted to a scalafx Line
+  * - A [[Triangle]] is converted to a scalafx Polygon with three vertices
+  *
+  */
 case class BasicRasterizer(
                             windowWidth: Double = 512.0,
                             windowHeight: Double = 512.0,
@@ -31,35 +36,25 @@ case class BasicRasterizer(
     viewportHeight) {
 
 
-  //region colors
-
-  /**
-    * Colors
-    */
-  private val defaultColor = Colors.black
-
-  private def toScalaFxColor(v: Vec4): Color = {
-    Color.color(v.r, v.g, v.b, v.a)
-  }
-
-//  private def getVertexColor(v: Vertex): Vec4 = {
-//    v.colorOption.getOrElse(defaultColor)
-//  }
-
-//  private def getSegmentColor(s: Segment): Vec4 = {
-//    (getVertexColor(s.v0) + getVertexColor(s.v1)) / 2.0
-//  }
-//
-//  private def getTriangleColor(t: Triangle): Vec4 = {
-//    (getVertexColor(t.v0) + getVertexColor(t.v1) + getVertexColor(t.v2)) / 3.0
-//  }
-  //endregion
-
-
   //------------------------------------------
 
 
   //region rasterize
+  override def rasterize(primitives: Seq[Primitive], lightData: Option[LightData] = None, fillMode: FillMode = FullMode): Seq[Node] = {
+    // No lighting is done in BasicRasterizer. Flat or Gouraud lighting is done before rasterization,
+    // and Phong cannot be done in BasicRasterizer because there is no pixel info.
+    primitives.map(toScreen).sortBy(-_.depth).flatMap(rasterizeScreenCoordsPrimitive(fillMode))
+  }
+
+
+  private def rasterizeScreenCoordsPrimitive(fillMode: FillMode)(primitive: Primitive): Seq[Node] = {
+    primitive match {
+      case v: Vertex => rasterizeVertex(v)
+      case s: Segment => rasterizeSegment(s)
+      case t: Triangle => rasterizeTriangle(t, fillMode) //t.edges.flatMap(rasterizeSegment)
+    }
+  }
+
 
   private def rasterizeVertex(v: Vertex): Seq[Node] = {
     val c = Circle(v.position.x, v.position.y, 1)
@@ -69,6 +64,7 @@ case class BasicRasterizer(
     //c.stroke = toScalaFxColor(getVertexColor(v))
     Seq(c)
   }
+
 
   private def rasterizeSegment(segment: Segment): Seq[Node] = {
     val (start, end) = (segment.v0.position, segment.v1.position)
@@ -89,13 +85,13 @@ case class BasicRasterizer(
   }
 
   private def rasterizeTriangle(tri: Triangle, fillMode: FillMode): Seq[Node] = {
-    val Seq(v0,v1,v2) = tri.ps
-    val poly = Polygon(v0.x,v0.y, v1.x,v1.y, v2.x,v2.y)
+    val Seq(v0, v1, v2) = tri.ps
+    val poly = Polygon(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y)
 
     fillMode match {
-      case FullMode => poly.fill = toScalaFxColor(tri.colorOption.getOrElse (defaultColor) )
+      case FullMode => poly.fill = toScalaFxColor(tri.colorOption.getOrElse(defaultColor))
       case WireFrameMode => {
-        poly.stroke = toScalaFxColor(tri.colorOption.getOrElse (defaultColor) )
+        poly.stroke = toScalaFxColor(tri.colorOption.getOrElse(defaultColor))
         poly.fill = Color.Transparent
       }
     }
@@ -103,24 +99,22 @@ case class BasicRasterizer(
     Seq(poly)
   }
 
-  private def rasterizeScreenCoordsPrimitive(fillMode: FillMode)(primitive: Primitive): Seq[Node] = {
-    primitive match {
-      case v: Vertex => rasterizeVertex(v)
-      case s: Segment => rasterizeSegment(s)
-      case t: Triangle => rasterizeTriangle(t, fillMode)//t.edges.flatMap(rasterizeSegment)
-    }
-  }
-
-  override def rasterize(primitives: Seq[Primitive], lightData: Option[LightData] = None, fillMode: FillMode = FullMode): Seq[Node] = {
-    // No lighting is done in BasicRasterizer. Flat or Gouraud lighting is done before rasterization,
-    // and Phong cannot be done in BasicRasterizer because there is no pixel info.
-    primitives.map(toScreen).sortBy(-_.depth).flatMap(rasterizeScreenCoordsPrimitive(fillMode))
-  }
 
   //endregion
 
 
   //------------------------------------------
+
+  //region colors
+
+  private val defaultColor = Colors.black
+
+  private def toScalaFxColor(v: Vec4): Color = {
+    Color.color(v.r, v.g, v.b, v.a)
+  }
+
+  //endregion
+
 
   /* Thickness calculation - maybe sometime
   private val minThickness: Double = 0.3

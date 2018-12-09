@@ -2,7 +2,24 @@ package com.graphicsDisplayer.vectors
 
 import com.graphicsDisplayer.vectors.Types.Vec2
 
-
+/**
+  * importing Swizzling._ allows access to vector components in similar manner to GLSL:
+  *
+  *
+  *   v.xz - Vec2
+  *   v.yzx - Vec3
+  *   v.yzwx - Vec4
+  *
+  *   etc.
+  *
+  *   And also with RGB annotation:
+  *
+  *   v.rgb
+  *   v.rgba
+  *
+  *   etc.
+  *
+  */
 object Swizzling {
 
   implicit class SwappableVec2(v:Vec2) {

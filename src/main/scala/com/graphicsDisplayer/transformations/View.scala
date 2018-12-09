@@ -4,6 +4,9 @@ import com.graphicsDisplayer.primitive.Vertex
 import com.graphicsDisplayer.transformations.Transformations._
 import com.graphicsDisplayer.vectors.Types.{Vec3, Vec4}
 
+/**
+  * A trait representing a view transformation
+  */
 trait View {
 
   def eye: Vec3

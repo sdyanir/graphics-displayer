@@ -3,6 +3,9 @@ package com.graphicsDisplayer.transformations
 import com.graphicsDisplayer.vectors.Types._
 import com.graphicsDisplayer.vectors._
 
+/**
+  * Various 3D transformation matrices (transalation, scale, rotation,
+  */
 object Transformations {
   import Math._
   import ImplicitOps._
@@ -51,6 +54,7 @@ object Transformations {
       .updated(1, 0, -sin(t))
   }
 
+  // view transformation
   def lookAt(eye:Vec3, at:Vec3, up:Vec3): Mat4 = {
     val newFrameZ = (eye-at).normalized
     val newFrameX = up.cross(newFrameZ).normalized
@@ -60,6 +64,7 @@ object Transformations {
 //    translation(-eye)*frameChange(newFrameX,newFrameY,newFrameZ)
   }
 
+  //orthogonal projection matrix
   def ortho(left: Double, right: Double, bottom: Double, top: Double, n: Double, f: Double): Mat4 = {
     if ((right == left) ||
       (top == bottom) ||
@@ -79,6 +84,7 @@ object Transformations {
     Mat4(v0,v1,v2,v3)
   }
 
+  //perspective projection matrix
   def frustum(left: Double, right: Double, bottom: Double, top: Double, near: Double, far: Double): Mat4 = {
     if ((right == left) ||
       (top == bottom) ||

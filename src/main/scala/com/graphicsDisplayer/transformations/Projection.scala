@@ -3,6 +3,10 @@ package com.graphicsDisplayer.transformations
 import com.graphicsDisplayer.primitive.Vertex
 import com.graphicsDisplayer.vectors.Types.{Mat4, Vec4}
 
+
+/**
+  * A trait representing a projection transformation
+  */
 trait Projection {
   def project(p:Vec4): Vec4
   def project(v: Vertex): Vertex

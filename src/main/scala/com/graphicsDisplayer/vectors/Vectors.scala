@@ -1,6 +1,10 @@
 package com.graphicsDisplayer.vectors
 import scala.language.implicitConversions
 
+/**
+  * Thi file defines basic vector and matrix types with the usual operations.
+  */
+
 object Types {
   private[vectors] type One
   private[vectors] type Two
@@ -274,6 +278,7 @@ object Mat4x2 {
 
 object ImplicitOps {
 
+  // Allow operations of Double with Vec
   implicit class DoubleWithVecOps(d: Double) {
     def +[T](v: Vec[T]): Vec[T] = v + d
 
@@ -284,59 +289,4 @@ object ImplicitOps {
     def /[T](v: Vec[T]): Vec[T] = v.forEach(1 / _) * d
   }
 
-  // The following gets strangely inconsistent results.
-  // Example:
-  // --------
-  // Vec[T] implements method f(Vec[T])
-  //
-  // val vec2: Vec2 = Vec2(1,2)
-  // val vec4: Vec4 = Vec4(1,2,3,4)
-  //
-  // assume there is implicit conversion Vec4-->Vec2
-  // Then in vec2.f(vec4) vec4 is converted to Vec2 as expected, however,
-  // also in vec4.f(vec2) vec4 is converted to Vec2, even if there is a conversion Vec2-->Vec4 !!!
-  //
-  // So, how is it decided which conversion to use (there is no essential difference between the two)?
-  // The answer is that sometime the one is selected and sometimes the same code selects the other!!!
-  // (run, get one result, remove one conversion and run again, restore the conversion and run again -
-  // get different result)
-  //
-
-  //implicit def Vec3toVec2(v:Vec3) : Vec2 = v.toVec2
-  //implicit def Vec4toVec2(v:Vec4) : Vec2 = v.toVec2
-  //implicit def Vec2toVec4(v:Vec2) : Vec4 = v.toVec4
-  //implicit def Vec4toVec3(v:Vec4) : Vec3 = v.toVec3
-
-
 }
-
-
-
-/*
-object Vectors {
-
-    class Col[T](values:Double*) extends Vec[T](values : _*) {
-      override def transpose : Row[T] = new Row(values : _*)
-    }
-    class Row[T](values:Double*) extends Vec[T](values : _*) {
-      override def transpose : Col[T] = new Col(values : _*)
-    }
-
-    object Mat {
-      def columnsToRows[C, R](cols: Seq[Vec[R]]): Seq[Vec[C]] = {
-        val nRows = cols.head.size
-        val rowsValues = (1 to nRows).map(_ => List.newBuilder[Double])
-
-        cols.foreach { c =>
-          c.values.zip(rowsValues).foreach { pair =>
-            pair._2 += pair._1
-          }
-        }
-
-        rowsValues.map(_.result()).map(l => new Vec[C](l: _*))
-      }
-    }
-
-
-}
-*/

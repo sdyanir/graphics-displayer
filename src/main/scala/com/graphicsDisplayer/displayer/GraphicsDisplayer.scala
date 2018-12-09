@@ -22,6 +22,20 @@ import scalafx.scene.input._
 import scalafx.scene.layout.{BorderPane, Pane}
 import scalafx.scene.paint.Color
 
+/**
+  * This is the main scalafx application. it defines the [[Scene3D]] with all the models, and uses [[Renderer]] to convert
+  * all models to scalafx shapes that can be drawn on the scalafx canvas.
+  *
+  * In addition, a simple interface is implemented to allow:
+  *  - Selecting models and manipulating them
+  *  - Transforming view
+  *  - Toggling orthogonal/perspective view
+  *  - Toggling showing vertex normals
+  *  - Toggling showing face normals
+  *  - Cycling render (or lighting) mode (Flat, Gouraud, Phong)
+  *  - Cycling fill mode (wireframe, solid)
+  *
+  */
 object GraphicsDisplayer extends JFXApp {
 
   val windowWidth = 512.0
