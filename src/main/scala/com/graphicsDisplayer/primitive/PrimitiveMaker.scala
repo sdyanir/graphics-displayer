@@ -1,8 +1,10 @@
 package com.graphicsDisplayer.primitive
 
-import com.graphicsDisplayer.model.BasicModel
-import com.graphicsDisplayer.renderer._
-
+/**
+  * make a sequence of primitives from a sequence of vertices according to draw mode.
+  * for example, if the draw mode is [[DrawLineStripe]], a Segment primitive will be created for every two consecutive
+  * vertices will, and the sequence of those Segments will be returned.
+  */
 object PrimitiveMaker {
 
   def makePrimitives(points: Seq[Vertex], drawMode: DrawMode): Seq[Primitive] = {
@@ -27,10 +29,10 @@ object PrimitiveMaker {
   }
 
 
-
   //region Make points
 
   private def makePoints(points: Seq[Vertex]): Seq[Vertex] = points
+
   //endregion
 
   //--------------------------------------------------------------------------------------------------------------------
@@ -47,7 +49,7 @@ object PrimitiveMaker {
     else
       points.zip(points.tail)
         .map({
-          case (p0,p1)  => Segment(p0, p1)
+          case (p0, p1) => Segment(p0, p1)
         })
   }
 
@@ -56,36 +58,13 @@ object PrimitiveMaker {
     else if (points.length < 3) Seq(Segment(points.head, points(1))) // there are two points --> one segment
     else makeLineStripe(points :+ points.head)
   }
+
   //endregion
 
   //--------------------------------------------------------------------------------------------------------------------
 
 
   //region Make triangles
-
-//  private def makeTriangles(points: Seq[Vertex]): Seq[Segment] = {
-//    makePolygons(points,3)
-//  }
-//
-//  private def makeTriangleStripe(points: Seq[Vertex]): Seq[Segment] = {
-//    if (points.length < 3) Seq()
-//    else
-//      (points, points.tail, points.tail.tail)
-//        .zipped.toSeq
-//        .flatMap({
-//          case (p0,p1,p2)  => makeLineLoop(Seq(p0, p1, p2))
-//        })
-//  }
-//
-//  private def makeTriangleFan(points: Seq[Vertex]): Seq[Segment] = {
-//    if (points.length < 3) Seq()
-//    else
-//      points.tail.zip(points.tail.tail)
-//        .flatMap({
-//          case (p1,p2)  => makeLineLoop(Seq(points.head, p1, p2))
-//        })
-//  }
-//
 
   private def makeTriangles(points: Seq[Vertex]): Seq[Triangle] = {
     points.grouped(3).takeWhile(_.size == 3)
@@ -99,30 +78,16 @@ object PrimitiveMaker {
       (points, points.tail, points.tail.tail)
         .zipped.toSeq
         .map({
-          case (p0,p1,p2)  => Triangle(p0, p1, p2)
+          case (p0, p1, p2) => Triangle(p0, p1, p2)
         })
   }
-
-//  private def makeTriangleStripe(points: Seq[Vertex]): Seq[Triangle] = {
-//    if (points.length < 3) Seq()
-//    else
-//      (points, points.tail, points.tail.tail)
-//        .zipped.toSeq
-//        .grouped(2)//attempt to arrange each triangle vertices in the right order for the normal direction
-//                    //TODO make this work or figure out something else
-//        .flatMap({
-//          case Seq((p0,p1,p2),(q0,q1,q2))  => Seq(Triangle(p0, p1, p2),Triangle(q2,q1,q0))
-//          case Seq((p0,p1,p2))  => Seq(Triangle(p0, p1, p2))
-//        })
-//        .toSeq
-//  }
 
   private def makeTriangleFan(points: Seq[Vertex]): Seq[Segment] = {
     if (points.length < 3) Seq()
     else
       points.tail.zip(points.tail.tail)
         .flatMap({
-          case (p1,p2)  => makeLineLoop(Seq(points.head, p1, p2))
+          case (p1, p2) => makeLineLoop(Seq(points.head, p1, p2))
         })
   }
 
@@ -137,5 +102,6 @@ object PrimitiveMaker {
     points.grouped(nEdges).takeWhile(_.size == nEdges)
       .flatMap(makeLineLoop).toSeq
   }
+
   //endregion
 }

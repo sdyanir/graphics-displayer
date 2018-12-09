@@ -10,6 +10,10 @@ import com.graphicsDisplayer.vectors.{Vec3, Vec4}
 import scala.annotation.tailrec
 import scala.io.Source
 
+/**
+  * read Wavefront OBJ files (mesh definition format).
+  * implements a subset of the format.
+  */
 object ObjReader {
 
   def readFile(file: File) : CompositeModel = {

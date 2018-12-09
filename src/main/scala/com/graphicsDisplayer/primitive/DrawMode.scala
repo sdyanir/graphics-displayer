@@ -1,6 +1,8 @@
 package com.graphicsDisplayer.primitive
 
 /*
+Various modes defining how a sequence of 3D vertices is converted to primitives that can be rendered on screen.
+Inspired by the OpenGL draw modes.
 
 GL_QUADS	Draws quadrilaterals (4 – sided shapes) on screen. Every four vertices specified compose a quadrilateral.
 GL_QUAD_STRIP	Draws connected quadrilaterals on screen. Every two vertices specified after first four compose a connected quadrilateral.
@@ -15,21 +17,25 @@ GL_POLYGON	Draws a polygon on screen. Polygon can be composed of as many sides a
 - GL_TRIANGLES
  */
 
-sealed trait DrawMode{
+sealed trait DrawMode {
   //def draw[T](seq:Seq[T]):Seq[Segment]
 }
 
 case object DrawPoints extends DrawMode
 
 case object DrawLines extends DrawMode
+
 case object DrawLineStripe extends DrawMode
+
 case object DrawLineLoop extends DrawMode
 
 case object DrawTriangles extends DrawMode
+
 case object DrawTriangleStripe extends DrawMode
+
 case object DrawTriangleFan extends DrawMode
 
-case class DrawPolygons(nEdges:Int) extends DrawMode
+case class DrawPolygons(nEdges: Int) extends DrawMode
 
 case object DrawEllipses extends DrawMode
 

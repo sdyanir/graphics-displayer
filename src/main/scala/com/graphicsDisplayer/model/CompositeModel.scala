@@ -3,25 +3,33 @@ package com.graphicsDisplayer.model
 import com.graphicsDisplayer.vectors.Types.{Mat3, Mat4, Vec3}
 import com.graphicsDisplayer.vectors.Vec3
 
+/**
+  * A composite model is comprised of other child models (may be composite themselves). When transformed, all child
+  * models are transformed together.
+  *
+  * @param origin - origin point of model
+  * @param models - sequence of child models
+  */
 case class CompositeModel(origin: Vec3, models: Model*) extends Model {
 
+  // set origin to all child models
   val originedModels = models.map(_.fixed().withOrigin(origin))
 
   override def withOrigin(newOrigin: Vec3): Model = new CompositeModel(newOrigin, models: _*)
 
-//  override def transform(M: Mat4, frame: Frame): Model =
-//    new CompositeModel(origin, originedModels.map(_.transform(M, frame)): _*)
-
   def transform(modelM: Mat4, normalM: Mat3, frame: Frame): Model =
     new CompositeModel(origin, originedModels.map(_.transform(modelM, normalM, frame)): _*)
 
-  override def fixed(): Model = new CompositeModel(origin, models.map(_.fixed()) : _*)
+  override def fixed(): Model = new CompositeModel(origin, models.map(_.fixed()): _*)
 
   def transformedVertexArrays: Seq[VertexArray] = {
     originedModels.flatMap(_.transformedVertexArrays)
   }
 }
 
+/**
+  * Contains methods for creating several composite models
+  */
 object CompositeModel {
 
   import BasicModel._
@@ -53,8 +61,8 @@ object CompositeModel {
         val cos = cosdeg(i * deg_lat)
 
         Seq(
-          xzCircle.scale(cos, 1, cos,WorldFrame).translate(0, rsin, 0,WorldFrame),
-          xzCircle.scale(cos, 1, cos,WorldFrame).translate(0, -rsin, 0,WorldFrame))
+          xzCircle.scale(cos, 1, cos, WorldFrame).translate(0, rsin, 0, WorldFrame),
+          xzCircle.scale(cos, 1, cos, WorldFrame).translate(0, -rsin, 0, WorldFrame))
 
       })) ++ (
       xyCircle +: (1 to numLongtitudes).map(i => {
@@ -62,7 +70,7 @@ object CompositeModel {
       }
       ))
 
-    new CompositeModel(origin,models :_*)
+    new CompositeModel(origin, models: _*)
 
   }
 }

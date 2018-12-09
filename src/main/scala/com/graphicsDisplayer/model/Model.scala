@@ -5,23 +5,35 @@ import com.graphicsDisplayer.transformations.Transformations.{rotationx, rotatio
 import com.graphicsDisplayer.vectors.{Mat3, Mat4}
 import com.graphicsDisplayer.vectors.Types.{Mat3, Mat4, Vec3}
 
+/**
+  * A general 3D model
+  */
 trait Model {
 
   //--------------------------------------------------------------------------------------------------------------------
-  //region Unimplemented methods
+  //region Methods implemented in implementing classes
   //--------------------------------------------------------------------------------------------------------------------
 
+  // All vertices after 3D transformation applied, ready for further processing for displaying on screen
   def transformedVertexArrays: Seq[VertexArray]
 
+  // origin point of model
   def origin: Vec3
 
-  //change model origin
+  // return a copy of the model with different origin
   def withOrigin(origin: Vec3): Model
 
-  //fix vertices and set transformation to ID
+  //fix vertices and set transformation matrix to ID
   //todo: probably not needed here
-  def fixed() : Model
+  def fixed(): Model
 
+  /** Transform the model
+    *
+    * @param modelM  - the new model transformation
+    * @param normalM - the new normal transformation matrix
+    * @param frame   - frame to transform according to (World, Object, other)
+    * @return a copy of the model with different transformation
+    */
   def transform(modelM: Mat4, normalM: Mat3, frame: Frame): Model
 
   //endregion
@@ -32,7 +44,7 @@ trait Model {
   //region Implemented methods
   //--------------------------------------------------------------------------------------------------------------------
 
-  def transform(M: Mat4, frame: Frame): Model = transform(M,M.toMat3,frame)
+  def transform(M: Mat4, frame: Frame): Model = transform(M, M.toMat3, frame)
 
   def translate(dx: Double, dy: Double, dz: Double, frame: Frame = ObjectFrame): Model = {
     transform(translation(dx, dy, dz), Model.idMat3, frame)
@@ -40,7 +52,7 @@ trait Model {
 
   def scale(x: Double, y: Double, z: Double, frame: Frame): Model = {
     val modelM = Transformations.scale(x, y, z)
-    val normalM = Transformations.scale(1.0/x, 1.0/y, 1.0/z).toMat3//todo: verify normal transform in scale
+    val normalM = Transformations.scale(1.0 / x, 1.0 / y, 1.0 / z).toMat3 //todo: verify normal transform in scale
     transform(modelM, normalM, frame)
   }
 
@@ -64,6 +76,7 @@ trait Model {
   def rotatez(angleDegrees: Double, frame: Frame = ObjectFrame): Model = {
     transform(rotationz(angleDegrees), frame)
   }
+
   //--------------------------------------------------------------------------------------------------------------------
   //endregion
 

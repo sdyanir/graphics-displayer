@@ -1,6 +1,5 @@
 package com.graphicsDisplayer.primitive
 
-import com.graphicsDisplayer.clipper.Clipper
 import com.graphicsDisplayer.vectors.Types.{Vec2, Vec3, Vec4}
 import com.graphicsDisplayer.vectors.{Vec, Vec3, Vec4}
 
@@ -12,11 +11,11 @@ sealed trait Primitive {
   def normalOption: Option[Vec3] = None
 
   //the normal should be directed away from origin of whole object
-  def originHintOpt:Option[Vec3] = None
+  def originHintOpt: Option[Vec3] = None
 
   def worldPositionOption: Option[Vec3] = None
 
-  def withColor(color:Vec4):Primitive
+  def withColor(color: Vec4): Primitive
 }
 
 //trait ModelPrimitive extends Primitive
@@ -42,7 +41,7 @@ case class Vertex(
   def depth: Double = position.z
 
 
-  def withColor(color:Vec4):Vertex = copy(attributes = attributes.copy(color = Some(color)))
+  def withColor(color: Vec4): Vertex = copy(attributes = attributes.copy(color = Some(color)))
 
   override def colorOption: Option[Vec4] = attributes.color
 
@@ -55,7 +54,7 @@ case class Vertex(
   //  def fixWorldPosition : Vertex = copy(worldPositionOption = Some(position), worldNormalOption = normalOption)
   def fixWorldPosition: Vertex =
     copy(
-      attributes = attributes.copy(worldPosition = Some(position.xyz / position.w) )
+      attributes = attributes.copy(worldPosition = Some(position.xyz / position.w))
     )
 }
 
@@ -88,28 +87,28 @@ object Vertex {
   def apply(x: Double, y: Double): Vertex = Vertex(Vec4(x, y))
 }
 
-case class Segment(v0: Vertex, v1: Vertex, uniColorOption:Option[Vec4] = None) extends Primitive {
+case class Segment(v0: Vertex, v1: Vertex, uniColorOption: Option[Vec4] = None) extends Primitive {
   def ps = Seq(v0, v1)
 
   def depth: Double = (v0.depth + v1.depth) / 2.0
 
-  def withColor(color:Vec4):Segment = copy(uniColorOption = Some(color))
+  def withColor(color: Vec4): Segment = copy(uniColorOption = Some(color))
 
   override def colorOption: Option[Vec4] =
     uniColorOption.orElse(
       (v0.colorOption, v1.colorOption) match {
-        case (Some(c0), Some(c1)) => Some((c0+c1)/2.0)
+        case (Some(c0), Some(c1)) => Some((c0 + c1) / 2.0)
         case _ => None
       }
     )
 
   override def normalOption: Option[Vec3] = (v0.normalOption, v1.normalOption) match {
-    case (Some(n0), Some(n1)) => Some((n0+n1)/2.0)
+    case (Some(n0), Some(n1)) => Some((n0 + n1) / 2.0)
     case _ => None
   }
 
   override def worldPositionOption: Option[Vec3] = (v0.worldPositionOption, v1.worldPositionOption) match {
-    case (Some(p0), Some(p1)) => Some((p0+p1)/2.0)
+    case (Some(p0), Some(p1)) => Some((p0 + p1) / 2.0)
     case _ => None
   }
 }
@@ -119,7 +118,7 @@ object Segment {
 }
 
 //todo: propagate originHintOpt from model. currently just using default origin of Vec3(0,0,0)
-case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption:Option[Vec4] = None, override val originHintOpt: Option[Vec3] = None) extends Primitive {
+case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption: Option[Vec4] = None, override val originHintOpt: Option[Vec3] = None) extends Primitive {
 
   def ps = Seq(v0, v1, v2)
 
@@ -127,12 +126,12 @@ case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption:Option[Ve
 
   def depth: Double = (v0.depth + v1.depth + v2.depth) / 3.0
 
-  def withColor(color:Vec4):Triangle = copy(uniColorOption = Some(color))
+  def withColor(color: Vec4): Triangle = copy(uniColorOption = Some(color))
 
   override def colorOption: Option[Vec4] =
     uniColorOption.orElse(
       (v0.colorOption, v1.colorOption, v2.colorOption) match {
-        case (Some(c0), Some(c1), Some(c2)) => Some((c0+c1+c2)/3.0)
+        case (Some(c0), Some(c1), Some(c2)) => Some((c0 + c1 + c2) / 3.0)
         case _ => None
       }
     )
@@ -140,9 +139,9 @@ case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption:Option[Ve
   override def normalOption: Option[Vec3] =
     (v0.worldPositionOption, v1.worldPositionOption, v2.worldPositionOption) match {
       case (Some(p0), Some(p1), Some(p2)) => {
-        val normal = (p1-p0).cross(p2-p0)
-        val originDirection = (p0+p1+p2) - originHintOpt.getOrElse(Vec3())
-        if (normal*originDirection>0)
+        val normal = (p1 - p0).cross(p2 - p0)
+        val originDirection = (p0 + p1 + p2) - originHintOpt.getOrElse(Vec3())
+        if (normal * originDirection > 0)
           Some(normal)
         else
           Some(-normal)
@@ -153,13 +152,9 @@ case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption:Option[Ve
 
   override def worldPositionOption: Option[Vec3] =
     (v0.worldPositionOption, v1.worldPositionOption, v2.worldPositionOption) match {
-      case (Some(p0), Some(p1), Some(p2)) => Some((p0+p1+p2)/3.0)
+      case (Some(p0), Some(p1), Some(p2)) => Some((p0 + p1 + p2) / 3.0)
       case _ => None
     }
-
-
-
-
 
 
   val area = Triangle.areaVec4(v0.position, v1.position, v2.position)
@@ -215,7 +210,7 @@ case class Triangle(v0: Vertex, v1: Vertex, v2: Vertex, uniColorOption:Option[Ve
     val worldPositionOpt = interpVecOpt(_.worldPositionOption)
     val shadowDepth = interpDoubleOpt(_.shadowDepth)
 
-    Vertex(Vec4(p.x, p.y, interpz), colorOpt, normalOpt, worldPositionOpt, shadowDepth)//, worldNormalOpt)
+    Vertex(Vec4(p.x, p.y, interpz), colorOpt, normalOpt, worldPositionOpt, shadowDepth) //, worldNormalOpt)
   }
 
   /*private def interpWithWeights(p: Vec2, w0:Double, w1:Double, w2: Double):Vertex = {

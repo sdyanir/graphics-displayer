@@ -6,75 +6,13 @@ import com.graphicsDisplayer.primitive.{Primitive, Vertex}
 import com.graphicsDisplayer.vectors.Types.{Mat3, Mat4, Vec3, Vec4}
 import com.graphicsDisplayer.vectors.{Vec3, Vec4}
 
+/**
+  * Implementation of lighting (according to OpenGL Red Book)
+  */
 sealed trait Light {
   def computeColor(v: Primitive, eye: Vec3): Vec4
 }
 
-case class PointLight(position: Vec4, color: Vec4 = Colors.white) extends Light with Model{
-
-  private val intensity = 30.0
-  private val defaultColor = Vec3(0.5,0.5,0.5)
-
-  private val constAttenuation = 1.0
-  private val linearAttenuation = 1.0
-  private val quadAttenuation = 1.0
-  def computeColor(v: Primitive, eye: Vec3) : Vec4 = {
-    //todo: compute actual lighting with normals etc ...
-    val baseColor = v.colorOption.map(_.toVec3).getOrElse(defaultColor)
-
-    val l = position.toVec3-v.worldPositionOption.getOrElse(Vec3())
-    val dist = l.norm2
-    val l_norm = l.normalized
-
-    val c = v.normalOption.map(_.toVec3*l_norm).getOrElse(1.0)/(constAttenuation+linearAttenuation*dist+quadAttenuation*dist*dist)*intensity
-
-    //println("c = " + c)
-    val newColor =
-      ((color.toVec3 :* baseColor)*c).forEach(Colors.clamp).toVec4
-
-//    if (newColor(0) > 0) {
-//      println()
-//      println("baseColor : " + baseColor)
-//      println("light color : " + color)
-//      println("newColor: " + newColor)
-//    }
-    newColor
-    //val dist = (v.position - position).norm2
-    //println("dist: " + dist)
-    //val newColor = (baseColor + 1.0/(dist*dist*dist)).forEach(clamp)
-    //println("newColor: " + newColor)
-    //v.copy(colorOption = Some(newColor.toVec4))
-  }
-
-
-  override def transformedVertexArrays: Seq[VertexArray] = Seq(VertexArray(Seq(Vertex(position))))
-
-  override def origin: Vec3 = position.toVec3
-
-  override def withOrigin(origin: Vec3): PointLight = PointLight(origin.toVec4)
-
-  override def fixed(): PointLight = this
-
-  override def transform(modelM: Mat4, normalM: Mat3, frame: Frame): PointLight = {
-    val newPosition = modelM*position
-    PointLight(newPosition/newPosition.w)
-  }
-
-//  private val model = BasicModel(VertexArray(Seq(Vertex(position)), drawMode = DrawPoints), origin = position.toVec3)
-//
-//  override def transformedVertexArrays: Seq[VertexArray] = model.transformedVertexArrays
-//
-//  override def origin: Vec3 = model.origin
-//
-//  override def withOrigin(origin: Vec3): Light = Light(origin.toVec4)
-//
-//  override def fixed(): Light = this
-//
-//  override def transform(modelM: Mat4, normalM: Mat4, frame: Frame): Light = {
-//    val newModel = model.transform(modelM,normalM,frame)
-//    Light(newModel.transformedVertexArrays.head.vertices.head.position)
-//  }
-}
 
 case class DirectionalLight(direction: Vec3, color: Vec3 = Colors.white.toVec3) extends Light {
   private val normalizedDirection = direction.normalized
@@ -107,6 +45,47 @@ case class DirectionalLight(direction: Vec3, color: Vec3 = Colors.white.toVec3) 
   }
 }
 
+case class PointLight(position: Vec4, color: Vec4 = Colors.white) extends Light with Model{
+
+  private val intensity = 30.0
+  private val defaultColor = Vec3(0.5,0.5,0.5)
+
+  private val constAttenuation = 1.0
+  private val linearAttenuation = 1.0
+  private val quadAttenuation = 1.0
+  def computeColor(v: Primitive, eye: Vec3) : Vec4 = {
+    //todo: compute actual lighting with normals etc ...
+    val baseColor = v.colorOption.map(_.toVec3).getOrElse(defaultColor)
+
+    val l = position.toVec3-v.worldPositionOption.getOrElse(Vec3())
+    val dist = l.norm2
+    val l_norm = l.normalized
+
+    val c = v.normalOption.map(_.toVec3*l_norm).getOrElse(1.0)/(constAttenuation+linearAttenuation*dist+quadAttenuation*dist*dist)*intensity
+
+    val newColor =
+      ((color.toVec3 :* baseColor)*c).forEach(Colors.clamp).toVec4
+
+    newColor
+  }
+
+
+  override def transformedVertexArrays: Seq[VertexArray] = Seq(VertexArray(Seq(Vertex(position))))
+
+  override def origin: Vec3 = position.toVec3
+
+  override def withOrigin(origin: Vec3): PointLight = PointLight(origin.toVec4)
+
+  override def fixed(): PointLight = this
+
+  override def transform(modelM: Mat4, normalM: Mat3, frame: Frame): PointLight = {
+    val newPosition = modelM*position
+    PointLight(newPosition/newPosition.w)
+  }
+
+}
+
+
 case class SphereHarmonicsLight(
                                  C1:Double = 0.429043,
                                  C2:Double = 0.511664,
@@ -114,7 +93,7 @@ case class SphereHarmonicsLight(
                                  C4:Double = 0.886227,
                                  C5:Double = 0.247708,
 
-                                 // Constants for Old Town Square lighting
+                                 // Constants for Old Town Square lighting (OpenGL Red Book)
                                  L00  : Vec3 = Vec3( 0.871297, 0.875222, 0.864470),
                                  L1m1 : Vec3 = Vec3( 0.175058, 0.245335, 0.312891),
                                  L10  : Vec3 = Vec3( 0.034675, 0.036107, 0.037362),

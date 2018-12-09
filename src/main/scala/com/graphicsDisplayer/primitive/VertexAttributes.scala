@@ -11,14 +11,3 @@ case class VertexAttributes(
                            ) {
 
 }
-
-//object VertexAttributes {
-//  def apply(attributes:Vector[Any]) : VertexAttributes = {
-//    VertexAttributes(
-//      attributes(0).asInstanceOf[Option[Vec4]],
-//      attributes(1).asInstanceOf[Option[Vec3]],
-//      attributes(2).asInstanceOf[Option[Vec4]],
-//      attributes(3).asInstanceOf[Option[Double]]
-//    )
-//  }
-//}
