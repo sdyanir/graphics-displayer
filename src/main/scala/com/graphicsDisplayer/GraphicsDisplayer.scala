@@ -1,26 +1,23 @@
-package com.graphicsDisplayer.displayer
+package com.graphicsDisplayer
+
 
 import java.io.File
 
 import com.graphicsDisplayer.clipper.Clipper
 import com.graphicsDisplayer.fileReader.ObjReader
-import com.graphicsDisplayer.light.{DirectionalLight, LightData, PointLight, SphereHarmonicsLight}
-import com.graphicsDisplayer.model
-import com.graphicsDisplayer.model._
-import com.graphicsDisplayer.primitive._
+import com.graphicsDisplayer.light.{LightData, PointLight}
+import com.graphicsDisplayer.model.{BasicModel, WorldFrame}
 import com.graphicsDisplayer.rasterize._
 import com.graphicsDisplayer.renderer._
 import com.graphicsDisplayer.scene.Scene3D
-import com.graphicsDisplayer.transformations.{Frustum, LookAt, Ortho, View}
-import com.graphicsDisplayer.vectors._
-
+import com.graphicsDisplayer.transformations.{Frustum, LookAt, Ortho}
+import com.graphicsDisplayer.vectors.{Vec2, Vec3, Vec4}
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
-import scalafx.scene.{Node, Scene}
 import scalafx.scene.input._
 import scalafx.scene.layout.{BorderPane, Pane}
-import scalafx.scene.paint.Color
+import scalafx.scene.{Node, Scene}
 
 /**
   * This is the main scalafx application. it defines the [[Scene3D]] with all the models, and uses [[Renderer]] to convert
@@ -43,10 +40,10 @@ object GraphicsDisplayer extends JFXApp {
 
 
   /**
-    * Updater updates the Scene to be rendered. Its methods are called on mouse/keyboard events, defined in the
-    * PrimaryStage below.
+    * [[Scene3DUpdater]] updates the [[Scene3D]] to be rendered. Its methods are called on mouse/keyboard events,
+    * defined in the PrimaryStage below.
     */
-  object Updater {
+  object Scene3DUpdater {
 
     // Define rasterizer and renderer
     private val viewportSize = 256.0
@@ -72,10 +69,10 @@ object GraphicsDisplayer extends JFXApp {
       windowWidth = windowWidth,
       windowHeight = windowHeight,
 
-      viewportX0 = 0,//windowWidth / 2,
+      viewportX0 = 0, //windowWidth / 2,
       viewportY0 = 0,
 
-      viewportWidth = windowWidth ,// / 2,
+      viewportWidth = windowWidth, // / 2,
       viewportHeight = windowHeight // / 2
     )
 
@@ -101,7 +98,7 @@ object GraphicsDisplayer extends JFXApp {
     //----------------------------------
     // 3D Models
 
-    private val box = BasicModel.box.scale(0.3).translate(-2,2,2)
+    private val box = BasicModel.box.scale(0.3).translate(-2, 2, 2)
 
     // A sphere formed by latitude and longitudes lines
     private val sphere = BasicModel.sphere.scale(0.3).translate(2, 2, 0)
@@ -119,8 +116,8 @@ object GraphicsDisplayer extends JFXApp {
 
     private def lightData =
       LightData(
-        ambient = Vec3(1,1,1)*0.35,
-        Seq(PointLight(Vec4(-3,3,2))),
+        ambient = Vec3(1, 1, 1) * 0.35,
+        Seq(PointLight(Vec4(-3, 3, 2))),
         view)
 
 
@@ -142,8 +139,8 @@ object GraphicsDisplayer extends JFXApp {
     //------------------------------------------
     //region Parameters that can be set by user
 
-    private var showVerticesNormals : Boolean = false
-    private var showFacesNormals : Boolean = false
+    private var showVerticesNormals: Boolean = false
+    private var showFacesNormals: Boolean = false
 
     // Render mode affects the lighting method. options: PhongRenderMode, GouraudRenderMode, FlatRenderMode
     // Note: PhongRenderMode works only with VirtualRasterizer, since lighting is computed for each pixel
@@ -158,10 +155,10 @@ object GraphicsDisplayer extends JFXApp {
     // BasicRasterizer is used, or rectangles representing virtual pixels if VirtualRasterizer is used.
     // A combination of both is also possible if using additional renderer to render the same scene with different
     // rasterizer.
-    def getObjectsToDraw : Seq[Node] =
+    def getObjectsToDraw: Seq[Node] =
       renderer.render(scene3d, renderMode, fillMode, showVerticesNormals, showFacesNormals) //++
     // add the result of another renderer
-      //  rendererWithBasicRasterizer.render(scene3d, renderMode, fillMode, showVerticesNormals, showFacesNormals)
+    //  rendererWithBasicRasterizer.render(scene3d, renderMode, fillMode, showVerticesNormals, showFacesNormals)
 
     // Frame affects object transformations. Can be WorldFrame, ObjectFrame or GeneralFrame (defined by a matrix)
     private val frame = WorldFrame
@@ -200,8 +197,8 @@ object GraphicsDisplayer extends JFXApp {
     def scaleSelectedUniform(amount: Double): Unit = {
       scene3d = scene3d.scaleSelectedUniform(amount, frame)
     }
-    //-------------------
 
+    //-------------------
 
 
     // View modification
@@ -220,10 +217,11 @@ object GraphicsDisplayer extends JFXApp {
     def setOrthogonal(): Unit = {
       scene3d = scene3d.copy(projection = orthographicProjection)
     }
+
     //------------------------
 
     //------------------------
-    def cycleRenderMode():Unit = {
+    def cycleRenderMode(): Unit = {
       renderMode = renderMode match {
         case FlatRenderMode => GouraudRenderMode
         case GouraudRenderMode => PhongRenderMode
@@ -231,18 +229,18 @@ object GraphicsDisplayer extends JFXApp {
       }
     }
 
-    def cycleFillMode():Unit = {
+    def cycleFillMode(): Unit = {
       fillMode = fillMode match {
         case FullMode => WireFrameMode
         case WireFrameMode => FullMode
       }
     }
 
-    def toggleShowVerticesNormals():Unit = {
+    def toggleShowVerticesNormals(): Unit = {
       showVerticesNormals = !showVerticesNormals
     }
 
-    def toggleShowFacesNormals():Unit = {
+    def toggleShowFacesNormals(): Unit = {
       showFacesNormals = !showFacesNormals
     }
 
@@ -253,29 +251,32 @@ object GraphicsDisplayer extends JFXApp {
     }
 
   }
+  //END Scene3DUpdater
 
 
+  //--------------------------------------------------------------------------------------------------------------------
+  //--------------------------------------------------------------------------------------------------------------------
 
+  //region scalafx
 
-
-
-
-
+  /**
+    * This section is responsible for creating the scalafx window, drawing scalafx shapes and handling user input.
+    */
   //the Pane contains all the graphic scalafx objects to be drawn, and is updated with every frame change.
   val pane = new Pane {
-    children = Updater.getObjectsToDraw
+    children = Scene3DUpdater.getObjectsToDraw
   }
 
 
   /**
-    * The PrimaryStage contains the scene to be rendered
+    * The PrimaryStage contains the scalafx scene to be drawn
     */
   stage = new PrimaryStage {
     title = "Graphics Displayer"
 
     /**
       * Define the scalafx Scene which contains the pane, which contains all the objects to be drawn.
-      * The scene contains mouse/keyboard events handlers, the call [[Updater]] methods to update the [[Scene3D]] which
+      * The scene contains mouse/keyboard events handlers, the call [[Scene3DUpdater]] methods to update the [[Scene3D]] which
       * contains all the 3D models. A new frame is drawn by setting the new objects to draw to the pane.
       */
     scene = new Scene(windowWidth, windowHeight) {
@@ -285,8 +286,7 @@ object GraphicsDisplayer extends JFXApp {
       }
 
       // Set the pane with the updated objects to draw
-      private def update():Unit = pane.children = Updater.getObjectsToDraw
-
+      private def update(): Unit = pane.children = Scene3DUpdater.getObjectsToDraw
 
 
       //region Mouse events
@@ -303,8 +303,8 @@ object GraphicsDisplayer extends JFXApp {
         updateDxDy(event.sceneX, event.sceneY)
 
         event.button match {
-          case MouseButton.Primary => Updater.zoomView(zoomViewSpeed * dy)
-          case MouseButton.Secondary => Updater.rotateView(-rotateViewSpeed * dy, rotateViewSpeed * dx)
+          case MouseButton.Primary => Scene3DUpdater.zoomView(zoomViewSpeed * dy)
+          case MouseButton.Secondary => Scene3DUpdater.rotateView(-rotateViewSpeed * dy, rotateViewSpeed * dx)
           case _ => {}
         }
         update()
@@ -313,7 +313,7 @@ object GraphicsDisplayer extends JFXApp {
       // Zoom with scroll wheel
       onScroll = (event: ScrollEvent) => {
 
-        Updater.zoomView(-zoomViewSpeed * Math.signum(event.deltaY))
+        Scene3DUpdater.zoomView(-zoomViewSpeed * Math.signum(event.deltaY))
 
         update()
       }
@@ -330,7 +330,7 @@ object GraphicsDisplayer extends JFXApp {
       onDragDropped = (event: DragEvent) => {
         if (event.dragboard.hasFiles) {
           println("Loading files: " + event.dragboard.files.mkString(", "))
-          Updater.loadFromFile(event.dragboard.files.head)
+          Scene3DUpdater.loadFromFile(event.dragboard.files.head)
           update()
         }
       }
@@ -341,14 +341,14 @@ object GraphicsDisplayer extends JFXApp {
 
         // Select a Model on Scene3D by pressing the model number
         if (event.code.isDigitKey) {
-          Updater.selectModel(event.code.name.toInt)
+          Scene3DUpdater.selectModel(event.code.name.toInt)
         }
 
         // Scale selected model uniformly by Ctrl+Up/Down arrow keys
         else if (event.controlDown) {
           event.code match {
-            case KeyCode.Up => Updater.scaleSelectedUniform(1.05)
-            case KeyCode.Down => Updater.scaleSelectedUniform(0.95)
+            case KeyCode.Up => Scene3DUpdater.scaleSelectedUniform(1.05)
+            case KeyCode.Down => Scene3DUpdater.scaleSelectedUniform(0.95)
 
             case _ => {}
           }
@@ -358,10 +358,10 @@ object GraphicsDisplayer extends JFXApp {
         // no option currently to scale Z
         else if (event.shiftDown) {
           event.code match {
-            case KeyCode.Right => Updater.scaleSelectedX(1.05)
-            case KeyCode.Left => Updater.scaleSelectedX(0.95)
-            case KeyCode.Up => Updater.scaleSelectedY(1.05)
-            case KeyCode.Down => Updater.scaleSelectedY(0.95)
+            case KeyCode.Right => Scene3DUpdater.scaleSelectedX(1.05)
+            case KeyCode.Left => Scene3DUpdater.scaleSelectedX(0.95)
+            case KeyCode.Up => Scene3DUpdater.scaleSelectedY(1.05)
+            case KeyCode.Down => Scene3DUpdater.scaleSelectedY(0.95)
 
             case _ => {}
           }
@@ -371,31 +371,31 @@ object GraphicsDisplayer extends JFXApp {
 
             // Translate selected Model
             //--------------------
-            case KeyCode.A => Updater.translateSelectedX(-0.05)
-            case KeyCode.D => Updater.translateSelectedX(0.05)
-            case KeyCode.S => Updater.translateSelectedY(-0.05)
-            case KeyCode.W => Updater.translateSelectedY(0.05)
+            case KeyCode.A => Scene3DUpdater.translateSelectedX(-0.05)
+            case KeyCode.D => Scene3DUpdater.translateSelectedX(0.05)
+            case KeyCode.S => Scene3DUpdater.translateSelectedY(-0.05)
+            case KeyCode.W => Scene3DUpdater.translateSelectedY(0.05)
 
             // Rotate selected Model
             //--------------------
-            case KeyCode.Right => Updater.rotateSelectedModelY(-5)
-            case KeyCode.Left => Updater.rotateSelectedModelY(5)
-            case KeyCode.Up => Updater.rotateSelectedModelX(5)
-            case KeyCode.Down => Updater.rotateSelectedModelX(-5)
+            case KeyCode.Right => Scene3DUpdater.rotateSelectedModelY(-5)
+            case KeyCode.Left => Scene3DUpdater.rotateSelectedModelY(5)
+            case KeyCode.Up => Scene3DUpdater.rotateSelectedModelX(5)
+            case KeyCode.Down => Scene3DUpdater.rotateSelectedModelX(-5)
 
             // Various scene settings
             //--------------------
-            case KeyCode.O => Updater.setOrthogonal()
+            case KeyCode.O => Scene3DUpdater.setOrthogonal()
 
-            case KeyCode.P => Updater.setPerspective()
+            case KeyCode.P => Scene3DUpdater.setPerspective()
 
-            case KeyCode.N => Updater.toggleShowVerticesNormals()
+            case KeyCode.N => Scene3DUpdater.toggleShowVerticesNormals()
 
-            case KeyCode.F => Updater.toggleShowFacesNormals()
+            case KeyCode.F => Scene3DUpdater.toggleShowFacesNormals()
 
-            case KeyCode.R => Updater.cycleRenderMode()
+            case KeyCode.R => Scene3DUpdater.cycleRenderMode()
 
-            case KeyCode.E => Updater.cycleFillMode()
+            case KeyCode.E => Scene3DUpdater.cycleFillMode()
             //--------------------
 
             case _ => {}
@@ -413,7 +413,7 @@ object GraphicsDisplayer extends JFXApp {
       private var dx: Double = 0
       private var dy: Double = 0
 
-      private def updateDxDy(newX: Double, newY: Double):Unit = {
+      private def updateDxDy(newX: Double, newY: Double): Unit = {
         dx = newX - prevX
         dy = newY - prevY
         prevX = newX
@@ -426,13 +426,5 @@ object GraphicsDisplayer extends JFXApp {
     }
   }
 
-
-  private def rect(x0: Double, y0: Double, w: Double, h: Double) = {
-    Seq(Vec2(x0, y0), Vec2(x0 + w, y0), Vec2(x0 + w, y0 + h), Vec2(x0, y0 + h))
-  }
-
-
-  private def colorToVec4(color: Color) = {
-    Vec4(color.red, color.green, color.blue, color.opacity)
-  }
+  //endregion
 }
