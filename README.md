@@ -3,7 +3,7 @@
 Graphics pipeline implemented fully in Scala.
 
 
-[GraphicsDisplayer](graphics-displayer/src/main/scala/com/graphicsDisplayer/GraphicsDisplayer.scala)
+[GraphicsDisplayer](src/main/scala/com/graphicsDisplayer/GraphicsDisplayer.scala)
 
 
 ## Features implemented
