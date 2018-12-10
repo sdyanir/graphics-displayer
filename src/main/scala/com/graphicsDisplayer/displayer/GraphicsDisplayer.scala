@@ -41,108 +41,18 @@ object GraphicsDisplayer extends JFXApp {
   val windowWidth = 512.0
   val windowHeight = 512.0
 
-  def rect(x0: Double, y0: Double, w: Double, h: Double) = {
-    Seq(Vec2(x0, y0), Vec2(x0 + w, y0), Vec2(x0 + w, y0 + h), Vec2(x0, y0 + h))
-  }
 
-
-  def colorToVec4(color: Color) = {
-    Vec4(color.red, color.green, color.blue, color.opacity)
-  }
-
+  /**
+    * Updater updates the Scene to be rendered. Its methods are called on mouse/keyboard events, defined in the
+    * PrimaryStage below.
+    */
   object Updater {
 
-    //region models
-
-    private val axis = CompositeModel.axis
-
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawPoints)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawLines)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawLineStripe)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawLineLoop)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawTriangles)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawTriangleStripe)
-    //private val simpleModel = BasicModel.simpleModel.copy(drawMode = DrawTriangleFan)
-
-    //private val box = BasicModel.box.withUniformColor(colorToVec4(Color.CadetBlue)).copy(drawMode = TestDrawMode)//.translate(0,1,0)
-    private val box = BasicModel.box //.copy(drawMode = TestDrawMode)//.translate(0,1,0)
-
-    private val circle = BasicModel.circle
-    private val ellipse = BasicModel.ellipse
-    private val sphere = BasicModel.sphere
-
-    import BasicModel.Tetrahedron.tetrahedron
-    import BasicModel.Icosahedron.icosahedron
-    private val triSphere = BasicModel.triSphere(numSteps = 2).scale(0.5)//.translate(2, 0, 0)
-
-    private val randomSphere = BasicModel.randomSphere
-    private val compositeSphere = CompositeModel.compositeSphere.scale(0.7)
-    //.translate(-2,0,0)
-    private val twoSpheres = CompositeModel(Vec3(), triSphere, compositeSphere)
-    //.translate(2,0,0)
-    private val prism = BasicModel.prism //.translate(3, 0, 0)
-
-    private val red = Vec4(1, 0, 0, 1)
-    private val blue = Vec4(0, 0, 1, 1)
-    private val oneLine =
-      BasicModel(
-        VertexArray(
-          Seq(
-            Vertex(Vec4(0, -0.5), colorOption = Some(red)),
-            Vertex(Vec4(0, 0.5, 0), colorOption = Some(blue))
-          )
-        )
-      )
-
-    private val tri1 =
-      BasicModel(
-        VertexArray(
-          Seq(Vec4(0, 0, 1), Vec4(1, 0, 1), Vec4(0, 1, 1)).map(Vertex(_)),
-          uniformColorOption = Option(red),
-          drawMode = DrawTriangles
-        )
-      )
-
-    private val tri2 =
-      BasicModel(
-        VertexArray(
-          Seq(Vec4(0.25, 0.25, 0), Vec4(0.25, 0.5, 2), Vec4(1, 1, 0)).map(Vertex(_)),
-          uniformColorOption = Option(blue),
-          drawMode = DrawTriangles
-        )
-      )
-    //endregion
-
-    //region clippers
-
-    private val clip1 = Clipper.polygonalClipper(rect(0.25, -0.25, 0.5, 0.5))
-    private val clip2 = Clipper.polygonalClipper(rect(-0.75, -0.25, 0.5, 0.5))
-    private val rhombus = Seq(Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0))
-    private val rhombusClip = Clipper.polygonalClipper(rhombus)
-
-    //endregion
-
-    private val f = 10.0
-    private val frust = Frustum(-1.0 / f, 1.0 / f, -1.0 / f, 1.0 / f, 2.0 / f, 50)
-    private val orth = Ortho(-1.0 / f, 1.0 / f, -1.0 / f, 1.0 / f, 2.0 / f, 50)
-    private val view = LookAt(eye = Vec3(1, 1, 7) / 2, at = Vec3(0, 0, 0), up = Vec3(0, 1, 0))
-
-    private def lightData =
-      LightData(
-        ambient = Vec3(1,1,1)*0.35,//0.35,
-        //Seq(DirectionalLight(Vec3(-1,1,1))),
-        Seq(PointLight(Vec4(-3,3,2))),
-        //Seq(SphereHarmonicsLight()),
-        view)
-    //    private var scene = Scene3D(frust, view, Seq(box.translate(0,0,3), box.withUniformColor(Vec4(1,0,0)).translate(0,0,1.5))).selectModel(0)
-    //private var scene = Scene3D(frust, view, Seq(tetrahedron, tri1, tri2)).selectModel(0)
-    //private var scene = Scene3D(frust, view, Some(lightData), Seq(tetrahedron)).selectModel(0)
-    //private var scene = Scene3D(frust, view, Some(lightData), Seq(icosahedron)).selectModel(0)
-    private var scene = Scene3D(frust, view, Some(lightData), Seq(triSphere, box.scale(0.3).translate(-2,2,2))).selectModel(0)
-    //private var scene = Scene3D(frust, view, Some(lightData),Seq(box)).selectModel(0)
-
+    // Define rasterizer and renderer
     private val viewportSize = 256.0
-    private val pixelSize = 2
+    private val virtualPixelSize = 2
+    // VirtualRasterizer simulates real rasterization by creating virtual pixels, which are
+    // represented by scalafx Rectangles that are later drawn to window.
     private val virtRasterizer = VirtualRasterizer(
       virtualWindowWidth = viewportSize,
       virtualWindowHeight = viewportSize,
@@ -152,10 +62,12 @@ object GraphicsDisplayer extends JFXApp {
 
       virtualViewportWidth = viewportSize,
       virtualViewportHeight = viewportSize,
-      virtualPixelWidth = pixelSize,
-      virtualPixelHeight = pixelSize
+      virtualPixelWidth = virtualPixelSize,
+      virtualPixelHeight = virtualPixelSize
     )
 
+    // As opposed to VirtualRasterizer, BasicRasterizer creates more high level scalafx shapes
+    // (circles, lines, triangles). Can choose which one to use. Can also use both with different viewport locations.
     private val basicRasterizer = BasicRasterizer(
       windowWidth = windowWidth,
       windowHeight = windowHeight,
@@ -165,93 +77,152 @@ object GraphicsDisplayer extends JFXApp {
 
       viewportWidth = windowWidth ,// / 2,
       viewportHeight = windowHeight // / 2
-     )
+    )
 
-    private val virtRenderer = Renderer(
-      rasterizer = virtRasterizer
-      // , additionalClippers = Seq(rhombusClip)
+    // A custom viewport clipper in the shape of a rhombus:
+    private val rhombus = Seq(Vec2(0, -1), Vec2(1, 0), Vec2(0, 1), Vec2(-1, 0))
+    private val rhombusClip = Clipper.polygonalClipper(rhombus)
+
+    private val renderer = Renderer(
+      rasterizer = virtRasterizer,
+      //rasterizer = basicRasterizer,
+      additionalClippers = Seq(rhombusClip)
     )
-    private val basicRenderer = Renderer(
-      rasterizer = basicRasterizer
-      // , additionalClippers = Seq(rhombusClip)
-    )
+
+    //----------------------------------
+
+    // Initial projection and view of the scene
+    private val f = 10.0
+    private val perspectiveProjection = Frustum(-1.0 / f, 1.0 / f, -1.0 / f, 1.0 / f, 2.0 / f, 50)
+    private val orthographicProjection = Ortho(-1.0 / f, 1.0 / f, -1.0 / f, 1.0 / f, 2.0 / f, 50)
+    private val view = LookAt(eye = Vec3(1, 1, 7) / 2, at = Vec3(0, 0, 0), up = Vec3(0, 1, 0))
+
+
+    //----------------------------------
+    // 3D Models
+
+    private val box = BasicModel.box.scale(0.3).translate(-2,2,2)
+
+    // A sphere formed by latitude and longitudes lines
+    private val sphere = BasicModel.sphere.scale(0.3).translate(2, 2, 0)
+
+    // A sphere created by subdividing recursively an icosahedron. numSteps is the number of subdivisions.
+    private val triSphere = BasicModel.triSphere(numSteps = 2).scale(0.5)
+
+    // A sphere created by randomly defining vertices on the sphere surface
+    private val randomSphere = BasicModel.randomSphere.scale(0.5).translate(-2, -2, 0)
+
+    private val prism = BasicModel.prism.scale(0.5).translate(-2, 0, 0)
+
+    //----------------------------------
+
+
+    private def lightData =
+      LightData(
+        ambient = Vec3(1,1,1)*0.35,
+        Seq(PointLight(Vec4(-3,3,2))),
+        view)
+
+
+    /**
+      * Define the main Scene3D which contains all the models and other scene information
+      */
+    private var scene3d =
+      Scene3D(
+        perspectiveProjection,
+        view,
+        Some(lightData),
+        Seq(box, sphere, triSphere, randomSphere, prism)
+      ).selectModel(0) // select first model initially
+    /**
+      *
+      */
+
+
+    //------------------------------------------
+    //region Parameters that can be set by user
 
     private var showVerticesNormals : Boolean = false
     private var showFacesNormals : Boolean = false
 
-    //private var renderMode: RenderMode = PhongRenderMode
-    private var renderMode: RenderMode = GouraudRenderMode
-    //private var renderMode: RenderMode = FlatRenderMode
+    // Render mode affects the lighting method. options: PhongRenderMode, GouraudRenderMode, FlatRenderMode
+    // Note: PhongRenderMode works only with VirtualRasterizer, since lighting is computed for each pixel
+    // (BasicRasterizer creates high level shapes and doesn't work on the pixel level)
+    private var renderMode: RenderMode = PhongRenderMode
 
+    // Fill Mode is FullMode or WireFrameMode
     private var fillMode: FillMode = FullMode
-    //private var fillMode: FillMode = WireFrameMode
 
-    def getRenderedScene : Seq[Node] =
-      virtRenderer.render(scene, renderMode, fillMode, showVerticesNormals, showFacesNormals) //++
-      //  basicRenderer.render(scene, renderMode, fillMode, showVerticesNormals, showFacesNormals)
+    // This is the main function that is called on every frame update. It initiates the whole graphic pipeline, to
+    // eventually create the scalafx shapes (Nodes) to be drawn. These shapes can be lines and triangles if
+    // BasicRasterizer is used, or rectangles representing virtual pixels if VirtualRasterizer is used.
+    // A combination of both is also possible if using additional renderer to render the same scene with different
+    // rasterizer.
+    def getObjectsToDraw : Seq[Node] =
+      renderer.render(scene3d, renderMode, fillMode, showVerticesNormals, showFacesNormals) //++
+    // add the result of another renderer
+      //  rendererWithBasicRasterizer.render(scene3d, renderMode, fillMode, showVerticesNormals, showFacesNormals)
 
-    private val frame = WorldFrame //ObjectFrame
+    // Frame affects object transformations. Can be WorldFrame, ObjectFrame or GeneralFrame (defined by a matrix)
+    private val frame = WorldFrame
+
+    // Methods that are called on user actions
+    //---------------
+    // Model selection and transformation
+    def selectModel(i: Int): Unit = {
+      scene3d = scene3d.selectModel(i)
+    }
 
     def translateSelectedY(amount: Double): Unit = {
-      scene = scene.translateSelectedY(amount, frame)
+      scene3d = scene3d.translateSelectedY(amount, frame)
     }
 
     def translateSelectedX(amount: Double): Unit = {
-      scene = scene.translateSelectedX(amount, frame)
+      scene3d = scene3d.translateSelectedX(amount, frame)
     }
 
     def rotateSelectedModelY(degrees: Double): Unit = {
-      scene = scene.rotateSelectedY(degrees, frame)
+      scene3d = scene3d.rotateSelectedY(degrees, frame)
     }
 
     def rotateSelectedModelX(degrees: Double): Unit = {
-      scene = scene.rotateSelectedX(degrees, frame)
+      scene3d = scene3d.rotateSelectedX(degrees, frame)
     }
 
     def scaleSelectedY(amount: Double): Unit = {
-      scene = scene.scaleSelectedY(amount, frame)
+      scene3d = scene3d.scaleSelectedY(amount, frame)
     }
 
     def scaleSelectedX(amount: Double): Unit = {
-      scene = scene.scaleSelectedX(amount, frame)
+      scene3d = scene3d.scaleSelectedX(amount, frame)
     }
 
     def scaleSelectedUniform(amount: Double): Unit = {
-      scene = scene.scaleSelectedUniform(amount, frame)
+      scene3d = scene3d.scaleSelectedUniform(amount, frame)
     }
+    //-------------------
 
-    def selectModel(i: Int) = {
-      scene = scene.selectModel(i)
-    }
 
+
+    // View modification
     def rotateView(degreesX: Double, degreesY: Double): Unit = {
-      scene = scene.rotateView(degreesX, degreesY)
+      scene3d = scene3d.rotateView(degreesX, degreesY)
     }
 
     def zoomView(amount: Double): Unit = {
-      scene = scene.zoomView(amount)
+      scene3d = scene3d.zoomView(amount)
     }
 
     def setPerspective(): Unit = {
-      scene = scene.copy(projection = frust)
+      scene3d = scene3d.copy(projection = perspectiveProjection)
     }
 
     def setOrthogonal(): Unit = {
-      scene = scene.copy(projection = orth)
+      scene3d = scene3d.copy(projection = orthographicProjection)
     }
+    //------------------------
 
-    def loadFromFile(file: File): Unit = {
-      scene = scene.addModel(ObjReader.readFile(file))
-    }
-
-    def toggleShowVerticesNormals():Unit = {
-      showVerticesNormals = !showVerticesNormals
-    }
-
-    def toggleShowFacesNormals():Unit = {
-      showFacesNormals = !showFacesNormals
-    }
-
+    //------------------------
     def cycleRenderMode():Unit = {
       renderMode = renderMode match {
         case FlatRenderMode => GouraudRenderMode
@@ -266,54 +237,69 @@ object GraphicsDisplayer extends JFXApp {
         case WireFrameMode => FullMode
       }
     }
+
+    def toggleShowVerticesNormals():Unit = {
+      showVerticesNormals = !showVerticesNormals
+    }
+
+    def toggleShowFacesNormals():Unit = {
+      showFacesNormals = !showFacesNormals
+    }
+
+    //------------------------
+    // Load an .obj file
+    def loadFromFile(file: File): Unit = {
+      scene3d = scene3d.addModel(ObjReader.readFile(file))
+    }
+
   }
 
 
+
+
+
+
+
+
+  //the Pane contains all the graphic scalafx objects to be drawn, and is updated with every frame change.
   val pane = new Pane {
-    children = Updater.getRenderedScene
+    children = Updater.getObjectsToDraw
   }
 
 
+  /**
+    * The PrimaryStage contains the scene to be rendered
+    */
   stage = new PrimaryStage {
-    title = "GraphicsDisplayer"
+    title = "Graphics Displayer"
+
+    /**
+      * Define the scalafx Scene which contains the pane, which contains all the objects to be drawn.
+      * The scene contains mouse/keyboard events handlers, the call [[Updater]] methods to update the [[Scene3D]] which
+      * contains all the 3D models. A new frame is drawn by setting the new objects to draw to the pane.
+      */
     scene = new Scene(windowWidth, windowHeight) {
+
       root = new BorderPane {
         center = pane
       }
 
-      def update = pane.children = Updater.getRenderedScene
-
-      //var clickedMouseButton:MouseButton = MouseButton.None
-      var prevX: Double = 0
-      var prevY: Double = 0
-      var dx: Double = 0
-      var dy: Double = 0
-
-      def updateDxDy(newX: Double, newY: Double) = {
-        dx = newX - prevX
-        dy = newY - prevY
-        prevX = newX
-        prevY = newY
-      }
-
-      val rotateViewSpeed = 0.3
-      val zoomViewSpeed = 0.1
+      // Set the pane with the updated objects to draw
+      private def update():Unit = pane.children = Updater.getObjectsToDraw
 
 
+
+      //region Mouse events
       onMouseMoved = (event: MouseEvent) => {
-        //println("Mouse moved: " + event.button)
-        //println("(dx,dy) = " + (dx, dy))
+
         updateDxDy(event.sceneX, event.sceneY)
 
-        //Doesn't work:
-        //        if (event.altDown) {
-        //          Updater.rotateView(-rotateViewSpeed*dy,rotateViewSpeed*dx)
-        //        }
       }
 
+      // Zoom view by dragging LMB
+      // Rotate view by dragging RMB
       onMouseDragged = (event: MouseEvent) => {
-        //println("Mouse dragged: " + event.button)
-        //println("(dx,dy) = " + (dx,dy))
+
         updateDxDy(event.sceneX, event.sceneY)
 
         event.button match {
@@ -321,35 +307,44 @@ object GraphicsDisplayer extends JFXApp {
           case MouseButton.Secondary => Updater.rotateView(-rotateViewSpeed * dy, rotateViewSpeed * dx)
           case _ => {}
         }
-        update
+        update()
       }
 
+      // Zoom with scroll wheel
       onScroll = (event: ScrollEvent) => {
 
-        //        println("scrolled, (deltaX,deltaY) = " + (event.deltaX, event.deltaY))
         Updater.zoomView(-zoomViewSpeed * Math.signum(event.deltaY))
 
-        update
+        update()
       }
 
+      // Load .obj files by dragging unto the window:
+      onDragOver = (event: DragEvent) => {
 
-      //      onMouseClicked = (event: MouseEvent) => {
-      //        //println("Mouse clicked: " + event.button)
-      //        //clickedMouseButton = event.button
-      ////        event.button match {
-      ////          case MouseButton.Primary => Updater.rotateBoxY(5)
-      ////          case MouseButton.Secondary => Updater.rotateBoxY(-5)
-      ////          case _ => {}
-      ////        }
-      ////        update
-      //      }
+        if (event.dragboard.hasFiles) {
+          //Enable drop:
+          event.acceptTransferModes(TransferMode.CopyOrMove: _*)
+        }
+      }
 
+      onDragDropped = (event: DragEvent) => {
+        if (event.dragboard.hasFiles) {
+          println("Loading files: " + event.dragboard.files.mkString(", "))
+          Updater.loadFromFile(event.dragboard.files.head)
+          update()
+        }
+      }
+      //endregion
 
+      //region Keyboard events
       onKeyPressed = (event: KeyEvent) => {
-        //println("Key pressed: " + event.code)
+
+        // Select a Model on Scene3D by pressing the model number
         if (event.code.isDigitKey) {
           Updater.selectModel(event.code.name.toInt)
         }
+
+        // Scale selected model uniformly by Ctrl+Up/Down arrow keys
         else if (event.controlDown) {
           event.code match {
             case KeyCode.Up => Updater.scaleSelectedUniform(1.05)
@@ -358,6 +353,9 @@ object GraphicsDisplayer extends JFXApp {
             case _ => {}
           }
         }
+
+        // Scale selected model non-uniformly by Shift+Up/Down (scale Y) or Shift+Left/Right (scale Y)
+        // no option currently to scale Z
         else if (event.shiftDown) {
           event.code match {
             case KeyCode.Right => Updater.scaleSelectedX(1.05)
@@ -370,72 +368,71 @@ object GraphicsDisplayer extends JFXApp {
         }
         else {
           event.code match {
+
+            // Translate selected Model
+            //--------------------
             case KeyCode.A => Updater.translateSelectedX(-0.05)
             case KeyCode.D => Updater.translateSelectedX(0.05)
             case KeyCode.S => Updater.translateSelectedY(-0.05)
             case KeyCode.W => Updater.translateSelectedY(0.05)
 
+            // Rotate selected Model
+            //--------------------
             case KeyCode.Right => Updater.rotateSelectedModelY(-5)
             case KeyCode.Left => Updater.rotateSelectedModelY(5)
             case KeyCode.Up => Updater.rotateSelectedModelX(5)
             case KeyCode.Down => Updater.rotateSelectedModelX(-5)
 
-            case KeyCode.O => {
-              Updater.setOrthogonal()
-            }
+            // Various scene settings
+            //--------------------
+            case KeyCode.O => Updater.setOrthogonal()
 
-            case KeyCode.P => {
-              Updater.setPerspective()
-            }
+            case KeyCode.P => Updater.setPerspective()
 
-            case KeyCode.N => {
-              Updater.toggleShowVerticesNormals()
-            }
+            case KeyCode.N => Updater.toggleShowVerticesNormals()
 
-            case KeyCode.F => {
-              Updater.toggleShowFacesNormals()
-            }
+            case KeyCode.F => Updater.toggleShowFacesNormals()
 
-            case KeyCode.R => {
-              Updater.cycleRenderMode()
-            }
+            case KeyCode.R => Updater.cycleRenderMode()
 
-            case KeyCode.E => {
-              Updater.cycleFillMode()
-            }
+            case KeyCode.E => Updater.cycleFillMode()
+            //--------------------
 
             case _ => {}
           }
         }
 
 
-        update
+        update()
+      }
+      //endregion
+
+      // mouse location and delta are updated on mouse move
+      private var prevX: Double = 0
+      private var prevY: Double = 0
+      private var dx: Double = 0
+      private var dy: Double = 0
+
+      private def updateDxDy(newX: Double, newY: Double):Unit = {
+        dx = newX - prevX
+        dy = newY - prevY
+        prevX = newX
+        prevY = newY
       }
 
-      onDragOver = (event: DragEvent) => {
-
-        if (event.dragboard.hasFiles) {
-          //Can add additional conditions, e.g., event.dragboard.files.head.getName.endsWith(".obj")
-          //Enable drop:
-          event.acceptTransferModes(TransferMode.CopyOrMove: _*)
-        }
-        //        println("onDragOver,event.dragboard.string: " + event.dragboard.string)
-        //        println("onDragOver,event.dragboard.files: " + event.dragboard.files)
-        //        println("onDragOver,event.dragboard.hasString: " + event.dragboard.hasString)
-        //        println("onDragOver,event.dragboard.hasFiles: " + event.dragboard.hasFiles)
-      }
-
-      onDragDropped = (event: DragEvent) => {
-        if (event.dragboard.hasFiles) {
-          println("Loading files: " + event.dragboard.files.mkString(", "))
-          Updater.loadFromFile(event.dragboard.files.head)
-          update
-        }
-
-        //println("onDragDropped,event.dragboard.string: " + event.dragboard.string)
-        //println("onDragDropped,event.dragboard.files: " + event.dragboard.files)
-      }
+      // Speed values cannot currently be modified by the user. Can define an event to allow control.
+      private val rotateViewSpeed = 0.3
+      private val zoomViewSpeed = 0.1
     }
   }
 
+
+  private def rect(x0: Double, y0: Double, w: Double, h: Double) = {
+    Seq(Vec2(x0, y0), Vec2(x0 + w, y0), Vec2(x0 + w, y0 + h), Vec2(x0, y0 + h))
+  }
+
+
+  private def colorToVec4(color: Color) = {
+    Vec4(color.red, color.green, color.blue, color.opacity)
+  }
 }

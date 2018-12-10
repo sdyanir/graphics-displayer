@@ -264,16 +264,16 @@ object BasicModel {
     val pole = Vec4(0, 1, 0)
 
     val numLatitudes = 20
-    val numLongtitudes = 20
+    val numLongitudes = 20
 
     val deg1 = 360 / numLatitudes
-    val deg2 = 360 / numLongtitudes
+    val deg2 = 360 / numLongitudes
 
     val vertices =
       (
         for (i <- 1 until numLatitudes) yield {
           val p = rotationx(deg1 * i) * pole
-          p +: (0 to numLongtitudes).map(j => rotationy(deg2 * j) * p)
+          p +: (0 to numLongitudes).map(j => rotationy(deg2 * j) * p)
         }
         ).flatten
 
@@ -377,26 +377,6 @@ object BasicModel {
   def triSphere(numSteps: Int) = {
 
     val center = Vec4()
-    //    val r = 1.0
-    //    val angle = toDegrees(asin(sqrt(1.0/3.0)))
-    //
-    //    val b = r*Math.sqrt(2.0/3.0)
-    //    val roty = rotationy(120)
-    //    val rotx = rotationx(-angle)
-    //
-    //    val ytip = b/2.0
-    //    val transy = translation(0,ytip,0)
-
-
-    //    val p0 = transy*center
-    //
-    //    val p_temp = rotx*Vec4(0,0,r)
-    //    val p1 = transy*p_temp
-    //    val p2 = transy*roty*p_temp
-    //    val p3 = transy*roty*roty*p_temp
-
-
-    //val r = 1
 
     def processTriangle(v1: Vec3, v2: Vec3, v3: Vec3): Seq[Vec3] = {
 
@@ -425,16 +405,12 @@ object BasicModel {
       }
     }
 
-
     val vertices =
       doSteps(Icosahedron.icosahedronTriangles, numSteps)
-        //  .map(_.normalized)
         .map(p => Vertex(
         p.toVec4,
-        //colorOption = Some(randColor),
         normalOption = Some(p.normalized)))
 
-    //vertices.foreach(v=>println(v.toVec3.norm))
     BasicModel(VertexArray(vertices, uniformColorOption = Some(orange), drawMode = DrawTriangles), origin = center.toVec3)
   }
 
