@@ -2,6 +2,7 @@ package com.graphicsDisplayer
 
 class Todo {
 
+  // This list is in code so it will be visible in Intellij TO DO items
   /*
     *
     * todo: implement blending (alpha)
