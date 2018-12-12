@@ -11,7 +11,7 @@ displaying graphical elements in a window. The virtual pixels are
 represented by ScalaFX rectangles. That, of course, is not very
 efficient or useful for any real world purpose, but it was fun to write :)
 
-| ![](example2.png) |
+| ![](example.png) |
 |:--:|
 | *The objects in this picture are constructed of small ScalaFX rectangles* |
 
