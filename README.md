@@ -26,7 +26,7 @@ arrays, and with various draw modes)
 - Basic pixel shading (color and lighting)
 
 
-There is also a more simplified and efficient "rasterizer" which can be
+There is also a more simplified (and somewhat less inefficient) "rasterizer" which can be
 used - it creates ScalaFX polygons to represent whole primitives,
 instead of really rasterizing primitives to pixels.
 
