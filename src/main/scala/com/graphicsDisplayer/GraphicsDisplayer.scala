@@ -20,7 +20,7 @@ import scalafx.scene.layout.{BorderPane, Pane}
 import scalafx.scene.{Node, Scene}
 
 /**
-  * This is the main scalafx application. it defines the [[Scene3D]] with all the models, and uses [[Renderer]] to convert
+  * This is the main scalafx application. It defines the [[Scene3D]] with all the models, and uses [[Renderer]] to convert
   * all models to scalafx shapes that can be drawn on the scalafx canvas.
   *
   * In addition, a simple interface is implemented to allow:
@@ -31,6 +31,7 @@ import scalafx.scene.{Node, Scene}
   *  - Toggling showing face normals
   *  - Cycling render (or lighting) mode (Flat, Gouraud, Phong)
   *  - Cycling fill mode (wireframe, solid)
+  *  - Loading .obj files
   *
   */
 object GraphicsDisplayer extends JFXApp {
@@ -98,7 +99,12 @@ object GraphicsDisplayer extends JFXApp {
     //----------------------------------
     // 3D Models
 
-    private val box = BasicModel.box.scale(0.3).translate(-2, 2, 2)
+    private val box =
+      BasicModel.box
+        .scale(0.6)
+        .rotatex(-15)
+        .rotatey(30)
+        .translate(-1, 1, 1)
 
     // A sphere formed by latitude and longitudes lines
     private val sphere = BasicModel.sphere.scale(0.3).translate(2, 2, 0)
